@@ -917,12 +917,27 @@ void BaseRealSenseNode::publishStaticTransforms(std::vector<rs2::stream_profile>
     // Publish static transforms
     if (_publish_tf)
     {
+
+        if (!_static_tf_broadcaster)
+        {
+            ROS_WARN_STREAM("DEBUG: Creating _static_tf_broadcaster with IPC disabled");
+            // Static TF requires latched QoS which is incompatible with IPC
+            rclcpp::PublisherOptionsWithAllocator<std::allocator<void>> options;
+            options.use_intra_process_comm = rclcpp::IntraProcessSetting::Disable;
+            _static_tf_broadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(_node, 
+                                                                                            tf2_ros::StaticBroadcasterQoS(), 
+                                                                                            std::move(options));
+        }
+
         for (auto &profile : profiles)
         {
             calcAndPublishStaticTransform(profile, _base_profile);
         }
-        if (_static_tf_broadcaster)
-            _static_tf_broadcaster->sendTransform(_static_tf_msgs);
+        _static_tf_broadcaster->sendTransform(_static_tf_msgs);
+    }
+    else
+    {
+        ROS_ERROR_STREAM("DEBUG: _publish_tf is FALSE - not publishing static transforms!");
     }
 }
 
